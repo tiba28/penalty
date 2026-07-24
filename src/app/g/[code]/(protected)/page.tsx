@@ -6,6 +6,7 @@ import { computeRanking } from "@/lib/ranking";
 import { computeTriggered } from "@/lib/punishmentTrigger";
 import type { PeriodType } from "@/lib/types";
 import LogoutButton from "./LogoutButton";
+import PendingApprovals from "./PendingApprovals";
 
 const PERIOD_LABEL: Record<string, string> = {
   cumulative: "累計",
@@ -39,19 +40,26 @@ export default async function DashboardPage({
     redirect(`/g/${code}/join`);
   }
 
-  const [{ data: members }, ranking, { data: punishments }] = await Promise.all([
-    supabaseAdmin
-      .from("members")
-      .select("id, name, is_creator, password_hash")
-      .eq("group_id", group.id)
-      .order("created_at", { ascending: true }),
-    computeRanking(group.id, group.period_type as PeriodType),
-    supabaseAdmin
-      .from("punishments")
-      .select("kind, threshold, interval_points, description")
-      .eq("group_id", group.id)
-      .order("created_at", { ascending: true }),
-  ]);
+  const [{ data: members }, ranking, { data: punishments }, { data: activeRules }] =
+    await Promise.all([
+      supabaseAdmin
+        .from("members")
+        .select("id, name, is_creator, password_hash")
+        .eq("group_id", group.id)
+        .order("created_at", { ascending: true }),
+      computeRanking(group.id, group.period_type as PeriodType),
+      supabaseAdmin
+        .from("punishments")
+        .select("kind, threshold, interval_points, description")
+        .eq("group_id", group.id)
+        .order("created_at", { ascending: true }),
+      supabaseAdmin
+        .from("rules")
+        .select("id, description, points")
+        .eq("group_id", group.id)
+        .eq("status", "active")
+        .order("created_at", { ascending: true }),
+    ]);
 
   // 各メンバーの発動中の罰
   const triggeredByMember = ranking.map((r) => ({
@@ -80,6 +88,9 @@ export default async function DashboardPage({
       <p className="mb-6 text-sm">
         こんにちは、<span className="font-semibold">{me?.name ?? "メンバー"}</span> さん
       </p>
+
+      {/* 一番上：要対応（あなた宛の加点承認・提案中のルール） */}
+      <PendingApprovals code={code} />
 
       <section className="mb-6">
         <h2 className="mb-2 text-sm font-medium text-gray-500">ランキング（ワースト）</h2>
@@ -155,6 +166,23 @@ export default async function DashboardPage({
           罰の設定<span className="text-gray-400">→</span>
         </Link>
       </nav>
+
+      {/* 一番下：成立したルール一覧 */}
+      <section className="mt-8">
+        <h2 className="mb-2 text-sm font-medium text-gray-500">成立したルール</h2>
+        {(activeRules ?? []).length === 0 ? (
+          <p className="text-sm text-gray-400">まだ成立したルールはありません。</p>
+        ) : (
+          <ul className="divide-y divide-gray-200 rounded-lg border border-gray-200 dark:divide-gray-800 dark:border-gray-800">
+            {(activeRules ?? []).map((r) => (
+              <li key={r.id} className="flex items-center justify-between px-3 py-2 text-sm">
+                <span>{r.description}</span>
+                <span className="font-semibold text-gray-500">{r.points}点</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </main>
   );
 }
