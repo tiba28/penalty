@@ -14,6 +14,21 @@
 
 - [要求定義書.md](要求定義書.md) — 仕様（v1.0 確定）
 
+## 技術構成
+
+- フロント: **Next.js 16 + React 19**（App Router / TypeScript / Tailwind CSS v4）
+- DB・認証・リアルタイム: **Supabase**（無料枠, 予定）
+- ホスティング: **Vercel**（無料枠, 予定）
+
+## 開発
+
+```bash
+npm install      # 依存インストール（初回のみ）
+npm run dev      # 開発サーバ起動 → http://localhost:3000
+npm run build    # 本番ビルド
+npm run lint     # ESLint
+```
+
 ## ステータス
 
-要求定義 完了 → 技術構成の確定・MVP実装へ（想定: Supabase ＋ Vercel）
+要求定義 完了 → Next.js 雛形作成済み → 次: Supabase 接続・DB設計・MVP実装
