@@ -166,3 +166,18 @@ create index idx_members_group   on members(group_id);
 create index idx_rules_group     on rules(group_id);
 create index idx_penalties_group on penalties(group_id);
 create index idx_penalties_target on penalties(target_member_id);
+
+-- ---------------------------------------------------------------------
+-- Row Level Security（RLS）
+--   全テーブルで RLS を有効化し、ポリシーは作らない。
+--   → 公開される anon 鍵ではテーブルに一切アクセスできない（全拒否）。
+--   → アクセスはすべて Next.js サーバー側の service_role 鍵経由で行う
+--     （service_role は RLS をバイパスするためアプリは正常動作）。
+--   将来ブラウザ直アクセスが必要になったら、その時に個別ポリシーを追加する。
+-- ---------------------------------------------------------------------
+alter table groups      enable row level security;
+alter table members     enable row level security;
+alter table rules       enable row level security;
+alter table rule_votes  enable row level security;
+alter table penalties   enable row level security;
+alter table punishments enable row level security;
