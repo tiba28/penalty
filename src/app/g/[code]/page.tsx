@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
@@ -79,9 +80,17 @@ export default async function DashboardPage({
         </ul>
       </section>
 
-      <section className="rounded-lg border border-dashed border-gray-300 p-4 text-sm text-gray-500 dark:border-gray-700">
-        次の実装予定: ルール作成・加点・ランキング・罰の設定
-      </section>
+      <nav className="grid gap-2">
+        <Link
+          href={`/g/${code}/rules`}
+          className="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium dark:border-gray-800"
+        >
+          ルール（提案・承認）<span className="text-gray-400">→</span>
+        </Link>
+        <div className="rounded-lg border border-dashed border-gray-300 px-4 py-3 text-sm text-gray-400 dark:border-gray-700">
+          次の実装予定: 加点・ランキング・罰の設定
+        </div>
+      </nav>
     </main>
   );
 }
