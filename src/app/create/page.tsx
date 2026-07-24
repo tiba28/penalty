@@ -114,7 +114,7 @@ export default function CreateGroupPage() {
           <input
             value={creatorName}
             onChange={(e) => setCreatorName(e.target.value)}
-            placeholder="例: たかひろ"
+            placeholder="例: たろう"
             className="w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-transparent"
           />
         </div>
