@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { computeRanking } from "@/lib/ranking";
+import { computeTriggered } from "@/lib/punishmentTrigger";
 import type { PeriodType } from "@/lib/types";
 import LogoutButton from "./LogoutButton";
 
@@ -38,14 +39,26 @@ export default async function DashboardPage({
     redirect(`/g/${code}/join`);
   }
 
-  const [{ data: members }, ranking] = await Promise.all([
+  const [{ data: members }, ranking, { data: punishments }] = await Promise.all([
     supabaseAdmin
       .from("members")
       .select("id, name, is_creator, password_hash")
       .eq("group_id", group.id)
       .order("created_at", { ascending: true }),
     computeRanking(group.id, group.period_type as PeriodType),
+    supabaseAdmin
+      .from("punishments")
+      .select("kind, threshold, interval_points, description")
+      .eq("group_id", group.id)
+      .order("created_at", { ascending: true }),
   ]);
+
+  // 各メンバーの発動中の罰
+  const triggeredByMember = ranking.map((r) => ({
+    ...r,
+    triggered: computeTriggered(r.points, punishments ?? []),
+  }));
+  const anyTriggered = triggeredByMember.some((r) => r.triggered.length > 0);
 
   const me = members?.find((m) => m.id === session.memberId);
   const isCreator = new Map((members ?? []).map((m) => [m.id, m.is_creator]));
@@ -96,6 +109,32 @@ export default async function DashboardPage({
         </ul>
       </section>
 
+      {anyTriggered && (
+        <section className="mb-6">
+          <h2 className="mb-2 text-sm font-medium text-gray-500">発動中の罰 🔥</h2>
+          <ul className="space-y-2">
+            {triggeredByMember
+              .filter((r) => r.triggered.length > 0)
+              .map((r) => (
+                <li
+                  key={r.memberId}
+                  className="rounded-lg border border-red-200 p-3 text-sm dark:border-red-900/60"
+                >
+                  <span className="font-medium">{r.name}</span>
+                  <ul className="mt-1 space-y-0.5">
+                    {r.triggered.map((t, i) => (
+                      <li key={i} className="text-gray-600 dark:text-gray-300">
+                        {t.description}{" "}
+                        <span className="text-xs text-gray-400">（{t.note}）</span>
+                      </li>
+                    ))}
+                  </ul>
+                </li>
+              ))}
+          </ul>
+        </section>
+      )}
+
       <nav className="grid gap-2">
         <Link
           href={`/g/${code}/rules`}
@@ -109,9 +148,12 @@ export default async function DashboardPage({
         >
           加点（申請・承認・履歴）<span className="text-gray-400">→</span>
         </Link>
-        <div className="rounded-lg border border-dashed border-gray-300 px-4 py-3 text-sm text-gray-400 dark:border-gray-700">
-          次の実装予定: 罰の設定・表示
-        </div>
+        <Link
+          href={`/g/${code}/punishments`}
+          className="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium dark:border-gray-800"
+        >
+          罰の設定<span className="text-gray-400">→</span>
+        </Link>
       </nav>
     </main>
   );
