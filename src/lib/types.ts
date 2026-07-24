@@ -36,14 +36,19 @@ export type Rule = {
   decided_at: string | null;
 };
 
+export type PenaltySource = "rule" | "ai";
+
 export type Penalty = {
   id: string;
   group_id: string;
   target_member_id: string;
-  rule_id: string;
+  rule_id: string | null;
   points: number;
   applied_by: string;
   status: PenaltyStatus;
+  source: PenaltySource;
+  ai_situation: string | null;
+  ai_reason: string | null;
   created_at: string;
   deadline: string;
   decided_at: string | null;

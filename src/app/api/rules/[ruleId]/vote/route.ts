@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getSession } from "@/lib/session";
+import { logEvent } from "@/lib/events";
 
 // ルールへの承認/却下
 export async function POST(
@@ -21,7 +22,7 @@ export async function POST(
 
   const { data: rule } = await supabaseAdmin
     .from("rules")
-    .select("id, group_id, proposed_by, status, deadline")
+    .select("id, group_id, proposed_by, status, deadline, description, points")
     .eq("id", ruleId)
     .maybeSingle();
 
@@ -67,6 +68,7 @@ export async function POST(
       .from("rules")
       .update({ status: "rejected", decided_at: new Date().toISOString() })
       .eq("id", rule.id);
+    await logEvent(rule.group_id, session.memberId, "rule_rejected", `ルール「${rule.description}」が却下されました`);
     return NextResponse.json({ ok: true, status: "rejected" });
   }
 
@@ -89,6 +91,12 @@ export async function POST(
       .from("rules")
       .update({ status: "active", decided_at: new Date().toISOString() })
       .eq("id", rule.id);
+    await logEvent(
+      rule.group_id,
+      session.memberId,
+      "rule_active",
+      `ルール「${rule.description}」= ${rule.points}点 が成立しました`,
+    );
     return NextResponse.json({ ok: true, status: "active" });
   }
 

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { authGroup } from "@/lib/auth";
+import { logEvent } from "@/lib/events";
 import type { Penalty, PenaltyStatus } from "@/lib/types";
 
 function effectiveStatus(p: Pick<Penalty, "status" | "deadline">): PenaltyStatus {
@@ -51,11 +52,17 @@ export async function GET(
   const list = ((penalties ?? []) as Penalty[]).map((p) => {
     const status = effectiveStatus(p);
     const iAmTarget = p.target_member_id === auth.memberId;
+    const description =
+      p.source === "ai"
+        ? `🤖 ${p.ai_situation ?? "AI判定"}`
+        : (p.rule_id ? ruleName.get(p.rule_id) : null) ?? "?";
     return {
       id: p.id,
       targetName: memberName.get(p.target_member_id) ?? "?",
       appliedByName: memberName.get(p.applied_by) ?? "?",
-      ruleDescription: ruleName.get(p.rule_id) ?? "?",
+      ruleDescription: description,
+      source: p.source,
+      aiReason: p.ai_reason,
       points: p.points,
       status,
       createdAt: p.created_at,
@@ -119,7 +126,7 @@ export async function POST(
   // 成立済みルールのみ加点に使える
   const { data: rule } = await supabaseAdmin
     .from("rules")
-    .select("id, points, status")
+    .select("id, description, points, status")
     .eq("id", ruleId)
     .eq("group_id", auth.group.id)
     .maybeSingle();
@@ -137,6 +144,19 @@ export async function POST(
   if (error) {
     return NextResponse.json({ ok: false, error: "加点申請に失敗しました" }, { status: 500 });
   }
+
+  // タイムライン記録
+  const { data: nm } = await supabaseAdmin
+    .from("members")
+    .select("id, name")
+    .in("id", [auth.memberId, targetMemberId]);
+  const nameOf = new Map((nm ?? []).map((m) => [m.id, m.name]));
+  await logEvent(
+    auth.group.id,
+    auth.memberId,
+    "penalty_applied",
+    `${nameOf.get(auth.memberId) ?? "誰か"} が ${nameOf.get(targetMemberId) ?? "誰か"} に「${rule.description}」で加点申請(${rule.points}点)`,
+  );
 
   return NextResponse.json({ ok: true });
 }

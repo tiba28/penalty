@@ -1,35 +1,51 @@
 "use client";
 
-import { useState } from "react";
-import { useParams } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 
+type Target = { id: string; name: string };
 type Verdict = { isPenalty: boolean; points: number; reason: string };
+type Result = { verdict: Verdict; applied: boolean; targetName: string };
 
 export default function AiJudgePage() {
   const { code } = useParams<{ code: string }>();
+  const router = useRouter();
+  const [targets, setTargets] = useState<Target[]>([]);
+  const [targetId, setTargetId] = useState("");
   const [situation, setSituation] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [verdict, setVerdict] = useState<Verdict | null>(null);
+  const [result, setResult] = useState<Result | null>(null);
+
+  const loadTargets = useCallback(async () => {
+    const res = await fetch(`/api/groups/${code}/penalties`);
+    const data = await res.json();
+    if (data.ok) setTargets(data.targets);
+  }, [code]);
+
+  useEffect(() => {
+    loadTargets();
+  }, [loadTargets]);
 
   async function judge(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    setVerdict(null);
+    setResult(null);
     setLoading(true);
     try {
       const res = await fetch(`/api/groups/${code}/ai-judge`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ situation }),
+        body: JSON.stringify({ situation, targetMemberId: targetId }),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
         setError(data.error ?? "判定に失敗しました");
         return;
       }
-      setVerdict(data.verdict);
+      setResult({ verdict: data.verdict, applied: data.applied, targetName: data.targetName });
+      if (data.applied) router.refresh();
     } catch {
       setError("通信エラーが発生しました");
     } finally {
@@ -44,12 +60,24 @@ export default function AiJudgePage() {
       </Link>
       <h1 className="mt-2 mb-1 text-2xl font-bold">AIに相談</h1>
       <p className="mb-6 text-sm text-gray-500">
-        ルールに無いけど「これペナルティじゃない？」という出来事を書いて相談できます。
-        AIが世間の常識と成立済みルールをふまえて、ペナルティか・何点が妥当か・理由を判定します。
-        （判定はあくまで参考です）
+        ルールに無いけど「これペナルティじゃない？」という出来事を相談できます。
+        AIが世間の常識と成立済みルールをふまえて判定し、
+        <span className="font-medium">ペナルティと判定されたら自動でその人へ加点申請</span>します（確定は本人の承認が必要）。
       </p>
 
       <form onSubmit={judge} className="space-y-3">
+        <select
+          value={targetId}
+          onChange={(e) => setTargetId(e.target.value)}
+          className="w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-transparent"
+        >
+          <option value="">誰について？</option>
+          {targets.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name}
+            </option>
+          ))}
+        </select>
         <textarea
           value={situation}
           onChange={(e) => setSituation(e.target.value)}
@@ -59,7 +87,7 @@ export default function AiJudgePage() {
         />
         <button
           type="submit"
-          disabled={loading || situation.trim() === ""}
+          disabled={loading || situation.trim() === "" || targetId === ""}
           className="w-full rounded-lg bg-black py-3 font-medium text-white disabled:opacity-50 dark:bg-white dark:text-black"
         >
           {loading ? "AIが判定中…" : "AIに判定してもらう"}
@@ -68,28 +96,30 @@ export default function AiJudgePage() {
 
       {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
 
-      {verdict && (
+      {result && (
         <section className="mt-6 rounded-lg border border-gray-200 p-4 dark:border-gray-800">
           <div className="flex items-center justify-between">
             <span
               className={`rounded-full px-3 py-1 text-sm font-medium ${
-                verdict.isPenalty
+                result.verdict.isPenalty
                   ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"
                   : "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300"
               }`}
             >
-              {verdict.isPenalty ? "ペナルティに該当" : "ペナルティではない"}
+              {result.verdict.isPenalty ? "ペナルティに該当" : "ペナルティではない"}
             </span>
-            {verdict.isPenalty && (
-              <span className="text-2xl font-bold">{verdict.points}点</span>
+            {result.verdict.isPenalty && (
+              <span className="text-2xl font-bold">{result.verdict.points}点</span>
             )}
           </div>
           <p className="mt-3 text-sm leading-relaxed text-gray-700 dark:text-gray-300">
-            {verdict.reason}
+            {result.verdict.reason}
           </p>
-          <p className="mt-3 text-xs text-gray-400">
-            ※ これはAIの参考意見です。実際の加点は「加点」から成立済みルールで行ってください。
-          </p>
+          {result.applied && (
+            <p className="mt-3 rounded-lg bg-amber-50 p-2 text-sm text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+              → {result.targetName} さんへ {result.verdict.points}点の加点を申請しました。本人の承認で確定します。
+            </p>
+          )}
         </section>
       )}
     </main>

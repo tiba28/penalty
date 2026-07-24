@@ -1,7 +1,7 @@
 import "server-only";
 
 // 無料枠の Google Gemini を使う。API キーはサーバー専用（フロントに出さない）。
-const MODEL = process.env.GEMINI_MODEL || "gemini-2.0-flash";
+const MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
 // プロンプトを渡し、JSON文字列で返させてパースする。
 export async function geminiGenerateJSON<T>(prompt: string): Promise<T> {

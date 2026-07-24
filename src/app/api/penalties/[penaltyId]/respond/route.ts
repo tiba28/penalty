@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getSession } from "@/lib/session";
+import { logEvent } from "@/lib/events";
 
 // 加点への当人の応答（認める＝confirmed / 却下＝rejected）
 export async function POST(
@@ -21,7 +22,7 @@ export async function POST(
 
   const { data: penalty } = await supabaseAdmin
     .from("penalties")
-    .select("id, group_id, target_member_id, status, deadline")
+    .select("id, group_id, target_member_id, status, deadline, points")
     .eq("id", penaltyId)
     .maybeSingle();
 
@@ -55,6 +56,18 @@ export async function POST(
   if (error) {
     return NextResponse.json({ ok: false, error: "応答に失敗しました" }, { status: 500 });
   }
+
+  const { data: me } = await supabaseAdmin
+    .from("members")
+    .select("name")
+    .eq("id", session.memberId)
+    .maybeSingle();
+  await logEvent(
+    penalty.group_id,
+    session.memberId,
+    accept ? "penalty_confirmed" : "penalty_rejected",
+    `${me?.name ?? "誰か"} が加点を${accept ? "承認（確定）" : "却下"}(${penalty.points}点)`,
+  );
 
   return NextResponse.json({ ok: true, status: accept ? "confirmed" : "rejected" });
 }

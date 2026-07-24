@@ -172,6 +172,12 @@ export default async function DashboardPage({
         >
           AIに相談（ペナルティ判定）<span className="text-gray-400">→</span>
         </Link>
+        <Link
+          href={`/g/${code}/timeline`}
+          className="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium dark:border-gray-800"
+        >
+          タイムライン<span className="text-gray-400">→</span>
+        </Link>
       </nav>
 
       {/* 一番下：成立したルール一覧 */}
