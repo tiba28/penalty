@@ -2,6 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { computeRanking } from "@/lib/ranking";
+import type { PeriodType } from "@/lib/types";
 import LogoutButton from "./LogoutButton";
 
 const PERIOD_LABEL: Record<string, string> = {
@@ -36,13 +38,18 @@ export default async function DashboardPage({
     redirect(`/g/${code}/join`);
   }
 
-  const { data: members } = await supabaseAdmin
-    .from("members")
-    .select("id, name, is_creator, password_hash")
-    .eq("group_id", group.id)
-    .order("created_at", { ascending: true });
+  const [{ data: members }, ranking] = await Promise.all([
+    supabaseAdmin
+      .from("members")
+      .select("id, name, is_creator, password_hash")
+      .eq("group_id", group.id)
+      .order("created_at", { ascending: true }),
+    computeRanking(group.id, group.period_type as PeriodType),
+  ]);
 
   const me = members?.find((m) => m.id === session.memberId);
+  const isCreator = new Map((members ?? []).map((m) => [m.id, m.is_creator]));
+  const claimed = new Map((members ?? []).map((m) => [m.id, m.password_hash !== null]));
 
   return (
     <main className="mx-auto max-w-md p-6">
@@ -62,19 +69,28 @@ export default async function DashboardPage({
       </p>
 
       <section className="mb-6">
-        <h2 className="mb-2 text-sm font-medium text-gray-500">メンバー</h2>
+        <h2 className="mb-2 text-sm font-medium text-gray-500">ランキング（ワースト）</h2>
         <ul className="divide-y divide-gray-200 rounded-lg border border-gray-200 dark:divide-gray-800 dark:border-gray-800">
-          {(members ?? []).map((m) => (
-            <li key={m.id} className="flex items-center justify-between px-3 py-2 text-sm">
-              <span>
-                {m.name}
-                {m.is_creator && (
-                  <span className="ml-1 text-xs text-gray-500">（作成者）</span>
-                )}
+          {ranking.map((r) => (
+            <li
+              key={r.memberId}
+              className={`flex items-center justify-between px-3 py-2 text-sm ${
+                r.memberId === session.memberId ? "bg-gray-50 dark:bg-gray-900" : ""
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                <span className="w-6 text-center font-semibold text-gray-500">{r.rank}</span>
+                <span>
+                  {r.name}
+                  {isCreator.get(r.memberId) && (
+                    <span className="ml-1 text-xs text-gray-500">（作成者）</span>
+                  )}
+                  {!claimed.get(r.memberId) && (
+                    <span className="ml-1 text-xs text-gray-400">（未登録）</span>
+                  )}
+                </span>
               </span>
-              <span className="text-xs text-gray-500">
-                {m.password_hash ? "参加済み" : "未登録"}
-              </span>
+              <span className="font-semibold">{r.points}点</span>
             </li>
           ))}
         </ul>
@@ -87,8 +103,14 @@ export default async function DashboardPage({
         >
           ルール（提案・承認）<span className="text-gray-400">→</span>
         </Link>
+        <Link
+          href={`/g/${code}/penalties`}
+          className="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium dark:border-gray-800"
+        >
+          加点（申請・承認・履歴）<span className="text-gray-400">→</span>
+        </Link>
         <div className="rounded-lg border border-dashed border-gray-300 px-4 py-3 text-sm text-gray-400 dark:border-gray-700">
-          次の実装予定: 加点・ランキング・罰の設定
+          次の実装予定: 罰の設定・表示
         </div>
       </nav>
     </main>
