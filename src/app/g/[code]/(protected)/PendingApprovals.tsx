@@ -22,23 +22,42 @@ type PendingPenalty = {
   points: number;
 };
 
+type PendingPunishment = {
+  id: string;
+  kind: "threshold" | "periodic";
+  threshold: number | null;
+  interval_points: number | null;
+  description: string;
+  status: "pending" | "delete_pending";
+  proposedByName: string;
+  approvedCount: number;
+  neededCount: number;
+};
+
 // ホーム上部の「要対応」領域：あなた宛の加点承認 ＋ 提案中のルール
 export default function PendingApprovals({ code }: { code: string }) {
   const router = useRouter();
   const [rules, setRules] = useState<PendingRule[]>([]);
   const [penalties, setPenalties] = useState<PendingPenalty[]>([]);
+  const [punishments, setPunishments] = useState<PendingPunishment[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const [rr, pr] = await Promise.all([
+    const [rr, pr, pu] = await Promise.all([
       fetch(`/api/groups/${code}/rules`).then((r) => r.json()),
       fetch(`/api/groups/${code}/penalties`).then((r) => r.json()),
+      fetch(`/api/groups/${code}/punishments`).then((r) => r.json()),
     ]);
     if (rr.ok) {
       setRules(rr.rules.filter((x: PendingRule & { status: string }) => x.status === "pending"));
     }
     if (pr.ok) {
       setPenalties(pr.penalties.filter((x: { canRespond: boolean }) => x.canRespond));
+    }
+    if (pu.ok) {
+      setPunishments(
+        pu.punishments.filter((x: { canVote: boolean }) => x.canVote),
+      );
     }
   }, [code]);
 
@@ -79,7 +98,21 @@ export default function PendingApprovals({ code }: { code: string }) {
     }
   }
 
-  if (rules.length === 0 && penalties.length === 0) return null;
+  async function votePunishment(id: string, approve: boolean) {
+    setBusy(id);
+    try {
+      await fetch(`/api/punishments/${id}/vote`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ approve }),
+      });
+      await refreshAll();
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  if (rules.length === 0 && penalties.length === 0 && punishments.length === 0) return null;
 
   return (
     <div className="mb-6 space-y-6">
@@ -155,6 +188,44 @@ export default function PendingApprovals({ code }: { code: string }) {
                           : ""}
                   </p>
                 )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {punishments.length > 0 && (
+        <section>
+          <h2 className="mb-2 text-sm font-medium">罰の提案（承認待ち）</h2>
+          <ul className="space-y-2">
+            {punishments.map((p) => (
+              <li key={p.id} className="rounded-lg border border-amber-300 p-3 dark:border-amber-700">
+                <p className="text-sm">
+                  <span className="text-xs text-gray-500">
+                    {p.status === "delete_pending" ? "削除の提案" : "追加の提案"}：
+                  </span>
+                  {p.kind === "threshold" ? `${p.threshold}点で` : `${p.interval_points}点ごとに`}{" "}
+                  {p.description}
+                </p>
+                <p className="mt-0.5 text-xs text-gray-500">
+                  提案: {p.proposedByName}・承認 {p.approvedCount}/{p.neededCount}
+                </p>
+                <div className="mt-2 flex gap-2">
+                  <button
+                    onClick={() => votePunishment(p.id, true)}
+                    disabled={busy === p.id}
+                    className="rounded-lg bg-green-600 px-4 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+                  >
+                    承認
+                  </button>
+                  <button
+                    onClick={() => votePunishment(p.id, false)}
+                    disabled={busy === p.id}
+                    className="rounded-lg border border-gray-300 px-4 py-1.5 text-sm font-medium dark:border-gray-700"
+                  >
+                    却下
+                  </button>
+                </div>
               </li>
             ))}
           </ul>

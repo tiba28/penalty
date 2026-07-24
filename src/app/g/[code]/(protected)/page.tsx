@@ -52,6 +52,7 @@ export default async function DashboardPage({
         .from("punishments")
         .select("kind, threshold, interval_points, description")
         .eq("group_id", group.id)
+        .in("status", ["active", "delete_pending"])
         .order("created_at", { ascending: true }),
       supabaseAdmin
         .from("rules")
