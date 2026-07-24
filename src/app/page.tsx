@@ -10,7 +10,7 @@ export default function Home() {
       </p>
       <Link
         href="/create"
-        className="rounded-lg bg-black py-3 text-center font-medium text-white dark:bg-white dark:text-black"
+        className="rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 py-3 text-center font-semibold text-white shadow-lg shadow-violet-500/25 transition hover:opacity-95"
       >
         グループを作成する
       </Link>

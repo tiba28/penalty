@@ -191,7 +191,7 @@ export default function CreateGroupPage() {
         <button
           type="submit"
           disabled={submitting}
-          className="w-full rounded-lg bg-black py-3 font-medium text-white disabled:opacity-50 dark:bg-white dark:text-black"
+          className="w-full rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 py-3 font-semibold text-white shadow-lg shadow-violet-500/25 transition hover:opacity-95 disabled:opacity-50"
         >
           {submitting ? "作成中…" : "グループを作成"}
         </button>

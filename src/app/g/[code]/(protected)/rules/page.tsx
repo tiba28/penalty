@@ -133,7 +133,7 @@ export default function RulesPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="ml-auto rounded-lg bg-black px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-black"
+            className="ml-auto rounded-lg bg-gradient-to-r from-indigo-500 to-violet-500 px-4 py-2 text-sm font-semibold text-white shadow-md shadow-violet-500/25 transition hover:opacity-95 disabled:opacity-50"
           >
             {submitting ? "提案中…" : "提案する"}
           </button>

@@ -154,7 +154,7 @@ export default function PunishmentsPage() {
         <button
           type="submit"
           disabled={submitting}
-          className="w-full rounded-lg bg-black py-2.5 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-black"
+          className="w-full rounded-lg bg-gradient-to-r from-indigo-500 to-violet-500 py-2.5 text-sm font-semibold text-white shadow-md shadow-violet-500/25 transition hover:opacity-95 disabled:opacity-50"
         >
           {submitting ? "提案中…" : "追加を提案"}
         </button>

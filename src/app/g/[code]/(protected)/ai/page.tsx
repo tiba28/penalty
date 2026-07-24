@@ -88,7 +88,7 @@ export default function AiJudgePage() {
         <button
           type="submit"
           disabled={loading || situation.trim() === "" || targetId === ""}
-          className="w-full rounded-lg bg-black py-3 font-medium text-white disabled:opacity-50 dark:bg-white dark:text-black"
+          className="w-full rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 py-3 font-semibold text-white shadow-lg shadow-violet-500/25 transition hover:opacity-95 disabled:opacity-50"
         >
           {loading ? "AIが判定中…" : "AIに判定してもらう"}
         </button>
