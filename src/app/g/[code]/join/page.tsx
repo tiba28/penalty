@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Intro from "./Intro";
 
 type MemberItem = { id: string; name: string; claimed: boolean };
 
@@ -81,6 +82,7 @@ export default function JoinPage() {
 
   return (
     <main className="mx-auto max-w-md p-6">
+      <Intro />
       <p className="text-sm text-gray-500">ペナルティ帳に参加</p>
       <h1 className="mb-6 text-2xl font-bold">{groupName}</h1>
 
